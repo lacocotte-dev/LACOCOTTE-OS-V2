@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LACOCOTTE OS Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      background: #FAF8F5;
+      color: #3D2B1F;
+      font-family: Arial, sans-serif;
+    }
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+    .brand {
+      font-size: 22px;
+      letter-spacing: 0.14em;
+      font-weight: bold;
+    }
+    .session {
+      font-size: 13px;
+      color: #8B7355;
+      margin: 4px 0 28px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      background: #F0EDE6;
+      border: 1px solid #D4C9B8;
+      padding: 18px;
+    }
+    .label {
+      font-size: 12px;
+      color: #8B7355;
+      margin-bottom: 6px;
+    }
+    .value {
+      font-size: 30px;
+      font-weight: bold;
+    }
+    .new-button {
+      margin-top: 24px;
+      width: 100%;
+      padding: 18px;
+      border: none;
+      background: #3D2B1F;
+      color: #FAF8F5;
+      font-size: 16px;
+      letter-spacing: 0.12em;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="brand">LACOCOTTE OS</div>
+    <div class="session">2026 Autumn France</div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="label">Today's Items</div>
+        <div class="value">18</div>
+      </div>
+      <div class="card">
+        <div class="label">Open Boxes</div>
+        <div class="value">2</div>
+      </div>
+      <div class="card">
+        <div class="label">Unsynced</div>
+        <div class="value">3</div>
+      </div>
+      <div class="card">
+        <div class="label">Today's Cost</div>
+        <div class="value">428€</div>
+      </div>
+    </div>
+
+    <button class="new-button">＋ NEW ITEM</button>
+  </div>
+</body>
+</html>
