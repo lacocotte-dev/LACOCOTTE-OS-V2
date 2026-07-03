@@ -67,7 +67,7 @@ function showDashboard() {
           <button onclick="showProducts()"><span class="icon">📦</span><span>Products</span></button>
           <button class="primary" onclick="showBoxes()"><span class="icon">🚚</span><span>Shipping</span></button>
           <button onclick="alert('同期は次に実装します')"><span class="icon">📊</span><span>Dashboard</span></button>
-          <button onclick="alert('設定は次に実装します')"><span class="icon">⚙️</span><span>Settings</span></button>
+          <button onclick="showSettings()"><span class="icon">⚙️</span><span>Settings</span></button>
         </div>
       `;
     })
@@ -75,6 +75,43 @@ function showDashboard() {
       alert("Dashboardエラー：" + err.message);
     })
     .getDashboardData();
+}
+
+function showSettings() {
+  document.getElementById("content").innerHTML = `
+    <div class="sub-header">
+      <button class="back-button" onclick="showDashboard()">‹</button>
+      <div>
+        <div class="sub-title">⚙️ Settings</div>
+        <div class="sub-count">System Settings</div>
+      </div>
+    </div>
+
+    <div class="card">
+  <div class="card-title">🔐 Atelier Key</div>
+  <div class="card-sub">起動時の簡易ロック・権限管理</div>
+</div>
+
+<div class="card">
+  <div class="card-title">🤖 AI Settings</div>
+  <div class="card-sub">AI解析のON/OFF設定</div>
+</div>
+
+<div class="card">
+  <div class="card-title">📄 Document Settings</div>
+  <div class="card-sub">Invoice / Value / Packing の表示設定</div>
+</div>
+
+<div class="card">
+  <div class="card-title">☁ Backup</div>
+  <div class="card-sub">GitHub / Google Drive 管理</div>
+</div>
+
+<div class="card">
+  <div class="card-title">ℹ Version</div>
+  <div class="card-sub">LACOCOTTE OS v2.1.0</div>
+</div>
+  `;
 }
 
 function showRegister() {
