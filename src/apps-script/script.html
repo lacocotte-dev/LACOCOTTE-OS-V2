@@ -1,1 +1,979 @@
+<script>
+let products = [];
+let selectedImageData = "";
 
+const DOC_PROFILE = {
+  invoiceTitle: "INVOICE",
+  invoiceSubtitle: "",
+  invoicePrefix: "LC-2026FR-INV",
+  shipperName: "TAKUMI TANIGAWA",
+  shipperAddress: "7 Rue de Rome, 93290 Tremblay-en-France<br>France",
+  shipperTel: "+33 80 22 69 16 78",
+  consigneeName: "TAKUMI TANIGAWA",
+  consigneeCompany: "STE IMAGEDOT",
+  consigneeAddress: "1-85-10 Otorinishimachi, Sakai Shi<br>Osaka 590-8326 JAPAN",
+  consigneeTel: "+81 72 247 7663"
+};
+
+function getInvoiceNo(boxName) {
+  return DOC_PROFILE.invoicePrefix + "-" + String(boxName).replace("BOX", "").padStart(4, "0");
+}
+
+document.addEventListener("DOMContentLoaded", initApp);
+
+function initApp() {
+  showDashboard();
+}
+
+function showDashboard() {
+  document.getElementById("content").innerHTML = `
+    <div class="home-hero" onclick="showRegister()">
+      <div class="home-camera">📷</div>
+      <div class="home-title">撮影する</div>
+    </div>
+
+    <div class="home-ai">
+      <span>✨ AI解析</span>
+      <span class="home-ai-on">ON</span>
+    </div>
+
+    <div class="home-status">
+      <div><div class="status-label">今日登録</div><div class="status-number">...</div></div>
+      <div><div class="status-label">総商品</div><div class="status-number">...</div></div>
+      <div><div class="status-label">発送BOX</div><div class="status-number">...</div></div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      document.getElementById("content").innerHTML = `
+        <div class="home-hero" onclick="showRegister()">
+          <div class="home-camera">📷</div>
+          <div class="home-title">撮影する</div>
+        </div>
+
+        <div class="home-ai">
+          <span>✨ AI解析</span>
+          <span class="home-ai-on">ON</span>
+        </div>
+
+        <div class="home-status">
+          <div><div class="status-label">今日登録</div><div class="status-number">${data.todayItems}</div></div>
+          <div><div class="status-label">総商品</div><div class="status-number">${data.totalItems}</div></div>
+          <div><div class="status-label">発送BOX</div><div class="status-number">${data.openBoxes}</div></div>
+        </div>
+
+        <div class="home-menu">
+          <button onclick="showProducts()"><span class="icon">📦</span><span>Products</span></button>
+          <button class="primary" onclick="showBoxes()"><span class="icon">🚚</span><span>Shipping</span></button>
+          <button onclick="alert('同期は次に実装します')"><span class="icon">📊</span><span>Dashboard</span></button>
+          <button onclick="alert('設定は次に実装します')"><span class="icon">⚙️</span><span>Settings</span></button>
+        </div>
+      `;
+    })
+    .withFailureHandler(function(err) {
+      alert("Dashboardエラー：" + err.message);
+    })
+    .getDashboardData();
+}
+
+function showRegister() {
+  selectedImageData = "";
+  selectedImageName = "";
+  renderForm(null);
+}
+
+function renderForm(p) {
+  p = p || {};
+  const isEdit = !!p.id;
+
+  document.getElementById("content").innerHTML = `
+    <input type="hidden" id="rowNumber" value="${p.rowNumber || ""}">
+    <input type="hidden" id="productId" value="${p.id || ""}">
+
+    <div class="sub-header">
+      <button class="back-button" onclick="showProducts()">‹</button>
+      <div>
+        <div class="sub-title">${isEdit ? "商品編集" : "商品登録"}</div>
+        <div class="sub-count">${p.id || "新規商品"}</div>
+      </div>
+    </div>
+
+    <label class="photo-area" id="photoArea">
+      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="previewPhoto(event)">
+      ${p.imageUrl
+        ? `<img src="${p.imageUrl}" class="photo-preview"><div class="photo-change">📷 タップして撮り直す</div>`
+        : `<div class="photo-icon">📷</div><div class="photo-title">写真を撮影</div><div class="photo-sub">タップしてカメラを起動</div>`
+      }
+    </label>
+
+    <button class="button secondary" id="aiButton" onclick="runAiMock()" style="${p.imageUrl ? "" : "display:none"}">
+      🤖 AI解析
+    </button>
+
+    <div class="form-group">
+      <label>商品名</label>
+      <input class="input" id="name" value="${p.name || ""}">
+    </div>
+
+    <div class="form-group">
+      <label>BOX</label>
+      <select class="input" id="box">
+        <option value="">BOX未設定</option>
+        <option value="BOX01" ${p.box === "BOX01" ? "selected" : ""}>BOX01</option>
+        <option value="BOX02" ${p.box === "BOX02" ? "selected" : ""}>BOX02</option>
+        <option value="BOX03" ${p.box === "BOX03" ? "selected" : ""}>BOX03</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>発送</label>
+      <select class="input" id="shippingEnabled">
+        <option value="false" ${!p.shippingEnabled ? "selected" : ""}>OFF</option>
+        <option value="true" ${p.shippingEnabled ? "selected" : ""}>ON</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>通関価格 EUR</label>
+      <input class="input" id="invoicePrice" type="number" value="${p.invoicePrice || p.price || ""}">
+    </div>
+
+    <div class="card">
+      <div class="card-title">🤖 AI情報</div>
+
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <input class="input" id="category" value="${p.category || ""}">
+      </div>
+
+      <div class="form-group">
+        <label>材質</label>
+        <input class="input" id="material" value="${p.material || ""}">
+      </div>
+
+      <div class="form-group">
+        <label>メモ</label>
+        <input class="input" id="memo" value="${p.memo || ""}">
+      </div>
+    </div>
+
+    <details class="card">
+      <summary class="card-title">💰 販売情報</summary>
+
+      <div class="form-group">
+        <label>仕入価格 EUR</label>
+        <input class="input" id="price" type="number" value="${p.price || ""}">
+      </div>
+
+      <div class="form-group">
+        <label>販売価格 JPY</label>
+        <input class="input" id="retail" type="number" value="${p.retail || ""}">
+      </div>
+    </details>
+
+    ${isEdit
+      ? `<button class="button" onclick="updateCurrentProduct()">更新する</button>
+         <button class="button danger" onclick="deleteCurrentProduct('${p.rowNumber || ""}')">削除する</button>`
+      : `<button class="button" onclick="saveNewProduct()">保存する</button>`
+    }
+
+    <button class="button secondary" onclick="showDashboard()">ホームへ戻る</button>
+  `;
+}
+
+function previewPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  selectedImageName = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    selectedImageData = e.target.result;
+
+    document.getElementById("photoArea").innerHTML = `
+      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="previewPhoto(event)">
+      <img src="${selectedImageData}" class="photo-preview">
+      <div class="photo-change">📷 タップして撮り直す</div>
+    `;
+
+    document.getElementById("aiButton").style.display = "block";
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function runAiMock() {
+  if (!selectedImageData) {
+    alert("先に写真を撮影してください。");
+    return;
+  }
+
+  document.getElementById("aiButton").innerText = "🤖 AI解析中...";
+  document.getElementById("aiButton").disabled = true;
+
+  const product = collectForm();
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById("name").value = result.name || "";
+      document.getElementById("category").value = result.category || "";
+      document.getElementById("material").value = result.material || "";
+      document.getElementById("memo").value =
+        "年代：" + (result.era || "") + "\\n" +
+        "国：" + (result.country || "") + "\\n" +
+        "判定：" + (result.authenticity || "") + "\\n" +
+        "信頼度：" + (result.confidence || "") + "%\\n" +
+        "通関名：" + (result.customsName || "") + "\\n" +
+        "説明：" + (result.description || "") + "\\n" +
+        "検索：" + (result.keywords || "") + "\\n" +
+        "補足：" + (result.memo || "");
+
+      document.getElementById("aiButton").innerText = "✅ AI解析完了";
+      document.getElementById("aiButton").disabled = false;
+    })
+    .withFailureHandler(function(err) {
+      alert("AI解析エラー：" + err.message);
+      document.getElementById("aiButton").innerText = "🤖 AI解析";
+      document.getElementById("aiButton").disabled = false;
+    })
+    .analyzeProductImage(product);
+}
+
+function collectForm() {
+  return {
+    rowNumber: document.getElementById("rowNumber").value,
+    id: document.getElementById("productId").value,
+    name: document.getElementById("name").value,
+    category: document.getElementById("category").value,
+    material: document.getElementById("material").value,
+    price: document.getElementById("price").value,
+    retail: document.getElementById("retail").value,
+    box: document.getElementById("box").value,
+    shippingEnabled: document.getElementById("shippingEnabled").value === "true",
+    invoicePrice: document.getElementById("invoicePrice").value,
+    memo: document.getElementById("memo").value,
+    country: "France",
+    status: "Draft",
+    imageData: selectedImageData,
+    imageName: selectedImageName
+  };
+}
+
+function saveNewProduct() {
+  const product = collectForm();
+
+  if (!product.name) {
+    alert("商品名を入力してください。");
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function() {
+      selectedImageData = "";
+      selectedImageName = "";
+      showDashboard();
+    })
+    .withFailureHandler(function(err) {
+      alert("保存エラー：" + err.message);
+    })
+    .saveProduct(product);
+}
+
+function updateCurrentProduct() {
+  const product = collectForm();
+
+  if (!product.name) {
+    alert("商品名を入力してください。");
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function() {
+      alert("更新しました。");
+      showProducts();
+    })
+    .withFailureHandler(function(err) {
+      alert("更新エラー：" + err.message);
+    })
+    .updateProduct(product);
+}
+
+function deleteCurrentProduct(rowNumber) {
+  if (!rowNumber) {
+    alert("削除に必要な行番号がありません。");
+    return;
+  }
+
+  if (!confirm("削除しますか？")) return;
+
+  google.script.run
+    .withSuccessHandler(function() {
+      alert("削除しました。");
+      showProducts();
+    })
+    .withFailureHandler(function(err) {
+      alert("削除エラー：" + err.message);
+    })
+    .deleteProduct(rowNumber);
+}
+
+function showProducts() {
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">📋 Products</div>
+      <div class="card-sub">読み込み中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      products = data || [];
+      renderProducts(products);
+    })
+    .withFailureHandler(function(err) {
+      alert("一覧エラー：" + err.message);
+    })
+    .getProducts();
+}
+
+function renderProducts(list) {
+  let html = `
+    <div class="sub-header">
+      <button class="back-button" onclick="showDashboard()">‹</button>
+      <div>
+        <div class="sub-title">商品一覧</div>
+        <div class="sub-count">${list.length}件</div>
+      </div>
+    </div>
+
+    <input class="search-input" placeholder="検索" oninput="searchProducts(this.value)">
+  `;
+
+  list.forEach(function(p) {
+    const image = p.imageUrl
+      ? `<img src="${p.imageUrl}" class="product-thumb">`
+      : `<div class="product-thumb no-photo">📷</div>`;
+
+    html += `
+      <div class="product-card" onclick="editProduct('${p.id}')">
+        ${image}
+        <div class="product-main">
+          <div class="product-name">${p.name || "名称未入力"}</div>
+          <div class="product-price">€ ${p.price || 0}</div>
+          <div class="product-box">📦 ${p.box || "BOX未設定"}</div>
+        </div>
+        <div class="product-arrow">›</div>
+      </div>
+    `;
+  });
+
+  html += `<button class="floating-add" onclick="showRegister()">＋</button>`;
+  document.getElementById("content").innerHTML = html;
+}
+
+function searchProducts(q) {
+  q = q.toLowerCase();
+
+  const filtered = products.filter(function(p) {
+    return (
+      String(p.id).toLowerCase().includes(q) ||
+      String(p.name).toLowerCase().includes(q) ||
+      String(p.category).toLowerCase().includes(q) ||
+      String(p.box).toLowerCase().includes(q)
+    );
+  });
+
+  renderProducts(filtered);
+}
+
+function editProduct(id) {
+  const product = products.find(function(p) {
+    return p.id === id;
+  });
+
+  if (!product) {
+    alert("商品が見つかりません。");
+    return;
+  }
+
+  selectedImageData = "";
+  selectedImageName = "";
+  renderForm(product);
+}
+
+function showBoxes() {
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">🚚 Shipping</div>
+      <div class="card-sub">読み込み中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      renderBoxes(data || []);
+    })
+    .withFailureHandler(function(err) {
+      alert("BOX集計エラー：" + err.message);
+    })
+    .getBoxSummary();
+}
+
+function renderBoxes(boxes) {
+  let html = `
+    <div class="sub-header">
+      <button class="back-button" onclick="showDashboard()">‹</button>
+      <div>
+        <div class="sub-title">🚚 Shipping</div>
+        <div class="sub-count">箱詰め・発送準備</div>
+      </div>
+    </div>
+  `;
+
+  boxes.forEach(function(b) {
+    html += `
+      <div class="card" onclick="showShippingWorkspace('${b.box}')">
+        <div class="card-title">📦 ${b.box}</div>
+        <div class="card-sub">
+          商品数：${b.total}点<br>
+          発送対象：${b.shipping}点<br>
+          Invoice合計：€${b.invoiceTotal}
+        </div>
+      </div>
+    `;
+  });
+
+  if (boxes.length === 0) {
+    html += `
+      <div class="card">
+        <div class="card-title">BOX未設定</div>
+        <div class="card-sub">まだBOXに商品がありません。</div>
+      </div>
+    `;
+  }
+
+  document.getElementById("content").innerHTML = html;
+}
+
+function showShippingWorkspace(boxName) {
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">🚚 Shipping Workspace</div>
+      <div class="card-sub">読み込み中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      renderShippingWorkspace(boxName, data || []);
+    })
+    .withFailureHandler(function(err) {
+      alert("Shippingエラー：" + err.message);
+    })
+    .getProductsByBox(boxName);
+}
+
+function renderShippingWorkspace(boxName, list) {
+  const shippingItems = list.filter(function(p) {
+    return p.shippingEnabled;
+  });
+
+  const invoiceTotal = shippingItems.reduce(function(sum, p) {
+    return sum + Number(p.invoicePrice || p.price || 0);
+  }, 0);
+
+  let html = `
+    <div class="sub-header">
+      <button class="back-button" onclick="showBoxes()">‹</button>
+      <div>
+        <div class="sub-title">🚚 ${boxName}</div>
+        <div class="sub-count">Shipping Workspace</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">発送サマリー</div>
+      <div class="card-sub">
+        商品数：${list.length}点<br>
+        発送対象：${shippingItems.length}点<br>
+        Invoice合計：€${invoiceTotal}
+      </div>
+    </div>
+  `;
+
+  shippingItems.forEach(function(p) {
+    const image = p.imageUrl
+      ? `<img src="${p.imageUrl}" class="product-thumb">`
+      : `<div class="product-thumb no-photo">📷</div>`;
+
+    html += `
+      <div class="product-card" onclick="editProduct('${p.id}')">
+        ${image}
+        <div class="product-main">
+          <div class="product-name">${p.name || "名称未入力"}</div>
+          <div class="product-price">€ ${p.invoicePrice || p.price || 0}</div>
+          <div class="product-box">📦 ${p.box || "BOX未設定"}</div>
+        </div>
+        <div class="product-arrow">›</div>
+      </div>
+    `;
+  });
+
+  if (shippingItems.length === 0) {
+    html += `
+      <div class="card">
+        <div class="card-title">発送対象なし</div>
+        <div class="card-sub">このBOXには発送ONの商品がありません。</div>
+      </div>
+    `;
+  }
+
+  html += `
+  <button class="button" onclick="showCommercialInvoice('${boxName}')">
+    📄 Invoice
+  </button>
+
+  <button class="button secondary" onclick="showStatementOfValue('${boxName}')">
+    📑 Value
+  </button>
+
+  <button class="button secondary" onclick="showPackingList('${boxName}')">
+  📦 Packing
+</button>
+`;
+
+  document.getElementById("content").innerHTML = html;
+}
+
+function showStatementOfValue(boxName) {
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">📄 Statement of Value</div>
+      <div class="card-sub">作成中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      renderStatementOfValue(boxName, data || []);
+    })
+    .withFailureHandler(function(err) {
+      alert("Statementエラー: " + err.message);
+    })
+    .getProductsByBox(boxName);
+}
+
+function showCommercialInvoice(boxName) {
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">📄 Commercial Invoice</div>
+      <div class="card-sub">作成中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      renderCommercialInvoice(boxName, data || []);
+    })
+    .withFailureHandler(function(err) {
+      alert("Invoiceエラー：" + err.message);
+    })
+    .getProductsByBox(boxName);
+}
+
+function renderCommercialInvoice(boxName, list) {
+  const items = list.filter(function(p) {
+    return p.shippingEnabled;
+  });
+
+  const groups = {};
+
+  items.forEach(function(p) {
+    const name = p.customsName || p.category || p.name || "Antique Item";
+    const material = p.material || "-";
+    const price = Number(p.invoicePrice || p.price || 0);
+
+    if (!groups[name]) {
+      groups[name] = {
+        name: name,
+        materialSet: {},
+        qty: 0,
+        total: 0,
+        photos: []
+      };
+    }
+
+    groups[name].qty += 1;
+    groups[name].total += price;
+
+    if (material && material !== "-") {
+      groups[name].materialSet[material] = true;
+    }
+
+    if (p.imageUrl) {
+      groups[name].photos.push(p.imageUrl);
+    }
+  });
+
+  const rows = Object.values(groups);
+
+  const totalQty = rows.reduce(function(sum, r) {
+    return sum + r.qty;
+  }, 0);
+
+  const grandTotal = rows.reduce(function(sum, r) {
+    return sum + r.total;
+  }, 0);
+
+  let tableRows = "";
+
+  rows.forEach(function(r, index) {
+    const no = String(index + 1).padStart(3, "0");
+    const unitPrice = r.qty ? (r.total / r.qty).toFixed(2) : "0.00";
+    const materials = Object.keys(r.materialSet).join(", ") || "-";
+
+    const photoHtml = r.photos.length
+      ? r.photos.slice(0, 6).map(function(url) {
+          return `<img src="${url}" class="invoice-photo">`;
+        }).join("")
+      : `<span class="no-image">No Image</span>`;
+
+    tableRows += `
+      <tr>
+        <td>${no}</td>
+        <td class="photo-cell">${photoHtml}</td>
+        <td>${r.name}</td>
+        <td>${materials}</td>
+        <td>${r.qty}</td>
+        <td>€${unitPrice}</td>
+        <td>€${r.total.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("content").innerHTML = `
+    <div class="sub-header no-print">
+      <button class="back-button" onclick="showShippingWorkspace('${boxName}')">‹</button>
+      <div>
+        <div class="sub-title">📄 Invoice</div>
+        <div class="sub-count">${boxName}</div>
+      </div>
+    </div>
+
+    <div class="invoice-sheet">
+      <div class="invoice-top">
+        <div class="invoice-title-main">${DOC_PROFILE.invoiceTitle || "INVOICE"}</div>
+${DOC_PROFILE.invoiceSubtitle
+  ? `<div class="invoice-subtitle-main">${DOC_PROFILE.invoiceSubtitle}</div>`
+  : ""
+}
+
+        <div class="invoice-meta-box">
+          <div><strong>Invoice No.</strong> : ${getInvoiceNo(boxName)}</div>
+          <div><strong>Invoice Date</strong> : ${new Date().toLocaleDateString()}</div>
+          <div><strong>Page</strong> : 1 / 1</div>
+        </div>
+      </div>
+
+      <div class="invoice-address">
+        <div class="box">
+          <strong>SHIPPER</strong>
+          ${DOC_PROFILE.shipperName}<br>
+          ${DOC_PROFILE.shipperAddress}<br>
+          TEL : ${DOC_PROFILE.shipperTel}
+        </div>
+
+        <div class="box">
+          <strong>CONSIGNEE</strong>
+          ${DOC_PROFILE.consigneeName}<br>
+          ${DOC_PROFILE.consigneeCompany}<br>
+          ${DOC_PROFILE.consigneeAddress}<br>
+          TEL : ${DOC_PROFILE.consigneeTel}
+        </div>
+      </div>
+
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Photo</th>
+            <th>Description of Goods</th>
+            <th>Material</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total Value</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${tableRows}
+
+          <tr>
+            <td colspan="4"><strong>TOTAL THIS PAGE</strong></td>
+            <td><strong>${totalQty}</strong></td>
+            <td></td>
+            <td><strong>€${grandTotal.toFixed(2)}</strong></td>
+          </tr>
+
+          <tr>
+            <td colspan="4"><strong>GRAND TOTAL</strong></td>
+            <td><strong>${totalQty}</strong></td>
+            <td></td>
+            <td><strong>€${grandTotal.toFixed(2)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="invoice-remarks">
+        <strong>Remarks :</strong><br>
+        The goods are antique & brocante items for display and collection.<br>
+        No commercial value, not for resale.
+      </div>
+
+      <div class="invoice-sign">
+        Prepared by : ____________________
+      </div>
+    </div>
+
+    <button class="button no-print" onclick="window.print()">
+      🖨 印刷 / PDF保存
+    </button>
+
+    <button class="button secondary no-print" onclick="showShippingWorkspace('${boxName}')">
+      Shippingへ戻る
+    </button>
+  `;
+}
+
+function renderStatementOfValue(boxName, list) {
+  const items = list.filter(function(p) {
+    return p.shippingEnabled;
+  });
+
+  const groups = {};
+
+  items.forEach(function(p) {
+    const name = p.customsName || p.category || p.name || "Antique Item";
+    const price = Number(p.invoicePrice || p.price || 0);
+
+    if (!groups[name]) {
+      groups[name] = {
+        name: name,
+        qty: 0,
+        total: 0
+      };
+    }
+
+    groups[name].qty += 1;
+    groups[name].total += price;
+  });
+
+  const rows = Object.values(groups);
+
+  const totalQty = rows.reduce(function(sum, r) {
+    return sum + r.qty;
+  }, 0);
+
+  const grandTotal = rows.reduce(function(sum, r) {
+    return sum + r.total;
+  }, 0);
+
+  let tableRows = "";
+
+  rows.forEach(function(r) {
+    const unitPrice = r.qty ? (r.total / r.qty).toFixed(2) : "0.00";
+
+    tableRows += `
+      <tr>
+        <td>${r.name}</td>
+        <td>€${unitPrice}</td>
+        <td>${r.qty}</td>
+        <td>€${r.total.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("content").innerHTML = `
+    <div class="sub-header no-print">
+      <button class="back-button" onclick="showShippingWorkspace('${boxName}')">‹</button>
+      <div>
+        <div class="sub-title">📑 Statement</div>
+        <div class="sub-count">${boxName}</div>
+      </div>
+    </div>
+
+    <div class="invoice-sheet">
+      <div class="invoice-top">
+        <div>
+          <div class="invoice-title-main">ATTESTATION DE VALEUR</div>
+          <div class="invoice-subtitle-main">Statement of Value</div>
+        </div>
+
+        <div class="invoice-meta-box">
+          <div><strong>Invoice No.</strong> : ${getInvoiceNo(boxName)}</div>
+          <div><strong>Date</strong> : ${new Date().toLocaleDateString()}</div>
+          <div><strong>Page</strong> : 1 / 1</div>
+        </div>
+      </div>
+
+      <div class="invoice-address">
+        <div class="box">
+          <strong>EXPÉDITEUR</strong>
+          ${DOC_PROFILE.shipperName}<br>
+          ${DOC_PROFILE.shipperAddress}<br>
+          Tél : ${DOC_PROFILE.shipperTel}
+        </div>
+
+        <div class="box">
+          <strong>DESTINATAIRE</strong>
+          ${DOC_PROFILE.consigneeName}<br>
+          ${DOC_PROFILE.consigneeCompany}<br>
+          ${DOC_PROFILE.consigneeAddress}<br>
+          Tél : ${DOC_PROFILE.consigneeTel}
+        </div>
+      </div>
+
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th>Goods Description</th>
+            <th>Unit Price</th>
+            <th>Quantity</th>
+            <th>Total Value</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${tableRows}
+
+          <tr>
+            <td><strong>GRAND TOTAL</strong></td>
+            <td></td>
+            <td><strong>${totalQty}</strong></td>
+            <td><strong>€${grandTotal.toFixed(2)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="invoice-sign">
+        Prepared by : ____________________
+      </div>
+    </div>
+
+    <button class="button no-print" onclick="window.print()">
+      🖨 印刷 / PDF保存
+    </button>
+
+    <button class="button secondary no-print" onclick="showShippingWorkspace('${boxName}')">
+      Shippingへ戻る
+    </button>
+  `;
+}
+function showPackingList(boxName) {
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="card-title">📦 Packing List</div>
+      <div class="card-sub">読み込み中...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(function(data){
+      renderPackingList(boxName, data || []);
+    })
+    .withFailureHandler(function(err){
+      alert("Packing List エラー : " + err.message);
+    })
+    .getProductsByBox(boxName);
+
+}
+function renderPackingList(boxName, list) {
+  const items = list.filter(function(p) {
+    return String(p.box || "") === String(boxName);
+  });
+
+  const totalPurchase = items.reduce(function(sum, p) {
+  return sum + Number(p.purchasePrice || p.price || 0);
+}, 0);
+
+  let cards = "";
+
+  items.forEach(function(p, index) {
+    const photo = p.imageUrl
+      ? `<img src="${p.imageUrl}" class="packing-photo">`
+      : `<div class="packing-photo no-photo">📷</div>`;
+
+    cards += `
+      <div class="packing-card">
+        <div class="packing-check">□</div>
+
+        <div class="packing-image">
+          ${photo}
+        </div>
+
+        <div class="packing-info">
+          <div class="packing-id">${p.id || "-"}</div>
+          <div class="packing-name">${p.name || "名称未入力"}</div>
+          <div class="packing-price">Purchase €${Number(p.purchasePrice || p.price || 0).toFixed(2)}</div>
+          <div class="packing-box">📦 ${p.box || boxName}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById("content").innerHTML = `
+    <div class="sub-header no-print">
+      <button class="back-button" onclick="showShippingWorkspace('${boxName}')">‹</button>
+      <div>
+        <div class="sub-title">📦 Packing List</div>
+        <div class="sub-count">${boxName}</div>
+      </div>
+    </div>
+
+    <div class="packing-sheet">
+      <div class="packing-header">
+        <div>
+          <div class="packing-title">PACKING LIST</div>
+          <div class="packing-sub">LACOCOTTE internal checklist</div>
+        </div>
+        <div class="packing-meta">
+          BOX : ${boxName}<br>
+          Date : ${new Date().toLocaleDateString()}<br>
+          Items : ${items.length}
+        </div>
+      </div>
+
+      <div class="packing-summary">
+        Total Items : ${items.length}<br>
+        Purchase Total : €${totalPurchase.toFixed(2)}
+      </div>
+
+      <div class="packing-list">
+        ${cards || `
+          <div class="card">
+            <div class="card-title">商品がありません</div>
+            <div class="card-sub">このBOXには商品がありません。</div>
+          </div>
+        `}
+      </div>
+
+      <div class="packing-footer">
+        Checked by : ____________________<br><br>
+Checked Date : ____________________
+      </div>
+    </div>
+
+    <button class="button no-print" onclick="window.print()">
+      🖨 印刷 / PDF保存
+    </button>
+
+    <button class="button secondary no-print" onclick="showShippingWorkspace('${boxName}')">
+      Shippingへ戻る
+    </button>
+  `;
+}
+</script>
