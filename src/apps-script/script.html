@@ -97,7 +97,7 @@ function showSettings() {
   <div class="card-sub">AI解析のON/OFF設定</div>
 </div>
 
-<div class="card">
+<div class="card" onclick="showDocumentSettings()">
   <div class="card-title">📄 Document Settings</div>
   <div class="card-sub">Invoice / Value / Packing の表示設定</div>
 </div>
@@ -113,6 +113,8 @@ function showSettings() {
 </div>
   `;
 }
+
+
 
 function showRegister() {
   selectedImageData = "";
@@ -1012,5 +1014,24 @@ Checked Date : ____________________
       Shippingへ戻る
     </button>
   `;
+}
+
+function showDocumentSettings() {
+  var html = '';
+
+  html += '<div class="sub-header">';
+  html += '<button class="back-button" onclick="showSettings()">‹</button>';
+  html += '<div>';
+  html += '<div class="sub-title">📄 Document Settings</div>';
+  html += '<div class="sub-count">Document Configuration</div>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Document Settings</div>';
+  html += '<div class="card-sub">Invoice / Value / Packing を管理します。</div>';
+  html += '</div>';
+
+  document.getElementById("content").innerHTML = html;
 }
 </script>
