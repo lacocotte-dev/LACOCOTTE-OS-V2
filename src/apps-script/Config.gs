@@ -1,1 +1,7 @@
+const SHEET_NAME = 'Products';
 
+const SPREADSHEET_ID = '1mkTM5D4AFg5IqkPrqCGGVZAGi1SwDAfl7SjNfd-bQQ4';
+
+const IMAGE_FOLDER_ID = '1j6Pd1zhlcGuZIqY5Fd8yCeLd741IbmSC';
+
+const GEMINI_API_KEY = 'YOUR_API_KEY';
