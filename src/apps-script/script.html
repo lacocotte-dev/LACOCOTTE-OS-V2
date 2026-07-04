@@ -1,6 +1,7 @@
 <script>
 let products = [];
 let selectedImageData = "";
+let selectedImageName = "";
 
 const DOC_PROFILE = {
   invoiceTitle: "INVOICE",
@@ -15,15 +16,50 @@ const DOC_PROFILE = {
   consigneeName: "TAKUMI TANIGAWA",
   consigneeCompany: "STE IMAGEDOT",
   consigneeAddress: "1-85-10 Otorinishimachi, Sakai Shi<br>Osaka 590-8326 JAPAN",
-  consigneeTel: "+81 72 247 7663"
-  
+  consigneeTel: "+81 72 247 7663",
+  invoiceRemark: "",
+  packingTitle: "PACKING LIST",
+  packingRemark: "Packed carefully for international shipment.",
+  valueCurrency: "EUR",
+  valueSource: "Purchase Price",
+  valueRate: "1.0"
 };
 
-DOC_PROFILE.language = DOC_PROFILE.language || "ja";
+function loadDocProfile() {
+  try {
+    const saved = localStorage.getItem("lacocotte_doc_profile");
+    if (saved) {
+      Object.assign(DOC_PROFILE, JSON.parse(saved));
+    }
+  } catch (e) {}
+}
+
+function saveDocProfile() {
+  try {
+    localStorage.setItem(
+      "lacocotte_doc_profile",
+      JSON.stringify(DOC_PROFILE)
+    );
+  } catch (e) {}
+}
+
+loadDocProfile();
+
+try {
+  DOC_PROFILE.language = localStorage.getItem("lacocotte_language") || DOC_PROFILE.language || "ja";
+} catch (e) {
+  DOC_PROFILE.language = DOC_PROFILE.language || "ja";
+}
 
 const UI_SETTINGS = {
-  languageMode: "JP_EN"
+  languageMode: "JP_EN",
+  ai: true
 };
+
+try {
+  UI_SETTINGS.ai =
+    localStorage.getItem("lacocotte_ai") !== "false";
+} catch (e) {}
 
 function t(ja, en) {
   const lang = DOC_PROFILE.language || "ja";
@@ -58,7 +94,7 @@ function showDashboard() {
 
     <div class="home-ai">
       <span>${t("✨ AI解析","✨ AI Analysis")}</span>
-      <span class="home-ai-on">ON</span>
+      <span class="home-ai-on" onclick="toggleAI()">${UI_SETTINGS.ai ? "ON" : "OFF"}</span>
     </div>
 
     <div class="home-status">
@@ -78,7 +114,7 @@ function showDashboard() {
 
         <div class="home-ai">
           <span>${t("✨ AI解析","✨ AI Analysis")}</span>
-          <span class="home-ai-on">ON</span>
+          <span class="home-ai-on" onclick="toggleAI()">${UI_SETTINGS.ai ? "ON" : "OFF"}</span>
         </div>
 
         <div class="home-status">
@@ -99,6 +135,21 @@ function showDashboard() {
       alert("Dashboardエラー：" + err.message);
     })
     .getDashboardData();
+}
+
+function toggleAI(){
+
+    UI_SETTINGS.ai = !UI_SETTINGS.ai;
+
+    try{
+        localStorage.setItem(
+            "lacocotte_ai",
+            UI_SETTINGS.ai
+        );
+    }catch(e){}
+
+    showDashboard();
+
 }
 
 function showSettings() {
@@ -128,7 +179,7 @@ function showSettings() {
 
 <div class="card" onclick="showLanguageSettings()">
     <div class="card-title">🌐 Language</div>
-    <div class="card-sub">${DOC_PROFILE.language || "ja"}</div>
+    <div class="card-sub">${getLanguageName()}</div>
 </div>
 
 <div class="card">
@@ -175,9 +226,9 @@ function renderForm(p) {
       }
     </label>
 
-    <button class="button secondary" id="aiButton" onclick="runAiMock()" style="${p.imageUrl ? "" : "display:none"}">
-      🤖 AI解析
-    </button>
+    <button class="button secondary" id="aiButton" onclick="runAiMock()" style="${(p.imageUrl && UI_SETTINGS.ai) ? "" : "display:none"}">
+  🤖 AI解析
+</button>
 
     <div class="form-group">
       <label>商品名</label>
@@ -207,7 +258,7 @@ function renderForm(p) {
       <input class="input" id="invoicePrice" type="number" value="${p.invoicePrice || p.price || ""}">
     </div>
 
-    <div class="card">
+    <div class="card" style="${UI_SETTINGS.ai ? '' : 'display:none'}">
       <div class="card-title">🤖 AI情報</div>
 
       <div class="form-group">
@@ -266,7 +317,7 @@ function previewPhoto(event) {
       <div class="photo-change">📷 タップして撮り直す</div>
     `;
 
-    document.getElementById("aiButton").style.display = "block";
+    document.getElementById("aiButton").style.display = UI_SETTINGS.ai ? "block" : "none";
   };
 
   reader.readAsDataURL(file);
@@ -797,8 +848,8 @@ ${DOC_PROFILE.invoiceSubtitle
 
       <div class="invoice-remarks">
         <strong>Remarks :</strong><br>
-        The goods are antique & brocante items for display and collection.<br>
-        No commercial value, not for resale.
+        ${DOC_PROFILE.commercialPurpose || "Antique & brocante items for display and collection."}<br>
+        ${DOC_PROFILE.commercialDeclaration || "No commercial value, not for resale."}
       </div>
 
       <div class="invoice-sign">
@@ -1005,8 +1056,8 @@ function renderPackingList(boxName, list) {
     <div class="packing-sheet">
       <div class="packing-header">
         <div>
-          <div class="packing-title">PACKING LIST</div>
-          <div class="packing-sub">LACOCOTTE internal checklist</div>
+          <div class="packing-title">${DOC_PROFILE.packingTitle || "PACKING LIST"}</div>
+          <div class="packing-sub">${DOC_PROFILE.packingRemark || "LACOCOTTE internal checklist"}</div>
         </div>
         <div class="packing-meta">
           BOX : ${boxName}<br>
@@ -1051,34 +1102,34 @@ function showDocumentSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">📄 Document Settings</div>';
-  html += '<div class="sub-count">Document Configuration</div>';
+  html += '<div class="sub-title">' + t("📄 ドキュメント設定","📄 Document Settings") + '</div>';
+  html += '<div class="sub-count">' + t("Invoice・Packing設定","Document Configuration") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card" onclick="showInvoiceSettings()">';
   html += '<div class="card-title">📄 Invoice</div>';
-  html += '<div class="card-sub">送り状の設定</div>';
+  html += '<div class="card-sub">'+t("送り状の設定","Invoice Settings")+'</div>';
   html += '</div>';
 
   html += '<div class="card" onclick="showCommercialInvoiceSettings()">';
   html += '<div class="card-title">🌍 Commercial Invoice</div>';
-  html += '<div class="card-sub">通関インボイス設定</div>';
+  html += '<div class="card-sub">'+t("通関インボイス設定","Commercial Invoice Settings")+'</div>';
   html += '</div>';
 
   html += '<div class="card" onclick="showPackingSettings()">';
   html += '<div class="card-title">📦 Packing List</div>';
-  html += '<div class="card-sub">Packing List の設定</div>';
+  html += '<div class="card-sub">'+t("Packing List設定","Packing List Settings")+'</div>';
   html += '</div>';
 
   html += '<div class="card" onclick="showValueSettings()">';
   html += '<div class="card-title">💰 Value Settings</div>';
-  html += '<div class="card-sub">価格・評価額設定</div>';
+  html += '<div class="card-sub">'+t("価格・評価額設定","Value Settings")+'</div>';
   html += '</div>';
 
   html += '<div class="card" onclick="showShippingSettings()">';
   html += '<div class="card-title">🚚 Shipping Settings</div>';
-  html += '<div class="card-sub">発送・BOX設定</div>';
+  html += '<div class="card-sub">'+t("発送・BOX設定","Shipping Settings")+'</div>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1090,42 +1141,41 @@ function showInvoiceSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">📄 Invoice</div>';
-  html += '<div class="sub-count">Invoice Configuration</div>';
+  html += '<div class="sub-title">📄 ' + t("送り状","Invoice") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Document Prefix</div>';
+  html += '<div class="card-title">' + t("書類番号","Document Prefix") + '</div>';
   html += '<div class="card-sub">' + DOC_PROFILE.invoicePrefix + '</div>';
-  html += '<button class="button secondary" onclick="showEditInvoicePrefix()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="showEditInvoicePrefix()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Shipper</div>';
+  html += '<div class="card-title">' + t("発送元","Shipper") + '</div>';
   html += '<div class="card-sub">';
   html += DOC_PROFILE.shipperName + '<br>';
   html += DOC_PROFILE.shipperAddress + '<br>';
   html += 'TEL : ' + DOC_PROFILE.shipperTel;
   html += '</div>';
-  html += '<button class="button secondary" onclick="showEditShipper()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="showEditShipper()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Consignee</div>';
+  html += '<div class="card-title">' + t("荷受人","Consignee") + '</div>';
   html += '<div class="card-sub">';
   html += DOC_PROFILE.consigneeName + '<br>';
   html += DOC_PROFILE.consigneeCompany + '<br>';
   html += DOC_PROFILE.consigneeAddress + '<br>';
   html += 'TEL : ' + DOC_PROFILE.consigneeTel;
   html += '</div>';
-  html += '<button class="button secondary" onclick="showEditConsignee()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="showEditConsignee()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Remarks</div>';
+  html += '<div class="card-title">' + t("備考","Remarks") + '</div>';
   html += '<div class="card-sub">' + (DOC_PROFILE.invoiceRemark || '') + '</div>';
-  html += '<button class="button secondary" onclick="showEditRemark()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="showEditRemark()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1137,27 +1187,26 @@ function showCommercialInvoiceSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">🌍 Commercial Invoice</div>';
-  html += '<div class="sub-count">Customs Document Settings</div>';
+  html += '<div class="sub-title">🌍 ' + t("通関インボイス","Commercial Invoice") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Title</div>';
+  html += '<div class="card-title">' + t("タイトル","Title") + '</div>';
   html += '<div class="card-sub">' + (DOC_PROFILE.commercialTitle || "COMMERCIAL INVOICE") + '</div>';
-  html += '<button class="primary-button" onclick="editCommercialTitle()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="editCommercialTitle()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Purpose</div>';
+  html += '<div class="card-title">' + t("用途","Purpose") + '</div>';
   html += '<div class="card-sub">' + (DOC_PROFILE.commercialPurpose || '') + '</div>';
-  html += '<button class="primary-button" onclick="editCommercialPurpose()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="editCommercialPurpose()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Declaration</div>';
+  html += '<div class="card-title">' + t("申告文","Declaration") + '</div>';
   html += '<div class="card-sub">' + (DOC_PROFILE.commercialDeclaration || '') + '</div>';
-  html += '<button class="primary-button" onclick="editCommercialDeclaration()">✏️ Edit</button>';
+  html += '<button class="button secondary" onclick="editCommercialDeclaration()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1169,21 +1218,20 @@ function showPackingSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">📦 Packing List</div>';
-  html += '<div class="sub-count">Packing List Settings</div>';
+  html += '<div class="sub-title">📦 ' + t("パッキングリスト","Packing List") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Title</div>';
-  html += '<div class="card-sub">' + (DOC_PROFILE.packingTitle || "PACKING LIST") + '</div>';
-  html += '<button class="primary-button" onclick="editPackingTitle()">✏️ Edit</button>';
+  html += '<div class="card-title">' + t("書類タイトル","Document Title") + '</div>';
+  html += '<div style="margin-top:12px;">' + (DOC_PROFILE.packingTitle || "PACKING LIST") + '</div>';
+  html += '<button class="button secondary" onclick="editPackingTitle()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Remark</div>';
-  html += '<div class="card-sub">' + (DOC_PROFILE.packingRemark || "") + '</div>';
-  html += '<button class="primary-button" onclick="editPackingRemark()">✏️ Edit</button>';
+  html += '<div class="card-title">' + t("備考","Remarks") + '</div>';
+  html += '<div style="margin-top:12px;">' + (DOC_PROFILE.packingRemark || "") + '</div>';
+  html += '<button class="button secondary" onclick="editPackingRemark()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1195,27 +1243,26 @@ function showValueSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">💰 Value Settings</div>';
-  html += '<div class="sub-count">Invoice Value Settings</div>';
+  html += '<div class="sub-title">💰 ' + t("価格設定","Value Settings") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Currency</div>';
-  html += '<div class="card-sub">' + (DOC_PROFILE.valueCurrency || "EUR") + '</div>';
-  html += '<button class="primary-button" onclick="editValueCurrency()">✏️ Edit</button>';
+  html += '<div class="card-title">' + t("通貨","Currency") + '</div>';
+  html += '<div style="margin-top:12px;">' + (DOC_PROFILE.valueCurrency || "EUR") + '</div>';
+  html += '<button class="button secondary" onclick="editValueCurrency()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Value Source</div>';
-  html += '<div class="card-sub">' + (DOC_PROFILE.valueSource || "Purchase Price") + '</div>';
-  html += '<button class="primary-button" onclick="editValueSource()">✏️ Edit</button>';
+  html += '<div class="card-title">' + t("価格の基準","Value Source") + '</div>';
+  html += '<div style="margin-top:12px;">' + (DOC_PROFILE.valueSource || "Purchase Price") + '</div>';
+  html += '<button class="button secondary" onclick="editValueSource()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Default Rate</div>';
-  html += '<div class="card-sub">' + (DOC_PROFILE.valueRate || "1.0") + '</div>';
-  html += '<button class="primary-button" onclick="editValueRate()">✏️ Edit</button>';
+  html += '<div class="card-title">' + t("換算レート","Exchange Rate") + '</div>';
+  html += '<div style="margin-top:12px;">' + (DOC_PROFILE.valueRate || "1.0") + '</div>';
+  html += '<button class="button secondary" onclick="editValueRate()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1227,19 +1274,21 @@ function showShippingSettings() {
   html += '<div class="sub-header">';
   html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
   html += '<div>';
-  html += '<div class="sub-title">🚚 Shipping Settings</div>';
-  html += '<div class="sub-count">Shipment Configuration</div>';
+  html += '<div class="sub-title">🚚 ' + t("発送設定","Shipping Settings") + '</div>';
+  html += '<div class="sub-count">' + t("BOX・発送設定","Shipment Configuration") + '</div>';
   html += '</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Default Box Size</div>';
-  html += '<div class="card-sub">100 cm</div>';
+  html += '<div class="card-title">' + t("標準BOXサイズ","Default Box Size") + '</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.defaultBox || "100 cm") + '</div>';
+  html += '<button class="primary-button" onclick="editDefaultBox()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Default Weight Unit</div>';
-  html += '<div class="card-sub">kg</div>';
+  html += '<div class="card-title">' + t("重量単位","Weight Unit") + '</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.weightUnit || "kg") + '</div>';
+  html += '<button class="primary-button" onclick="editWeightUnit()">✏️ ' + t("変更","Change") + '</button>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
@@ -1253,6 +1302,7 @@ function editValueCurrency() {
 
   if (value !== null) {
     DOC_PROFILE.valueCurrency = value;
+    saveDocProfile();
     showValueSettings();
   }
 }
@@ -1265,6 +1315,7 @@ function editValueSource() {
 
   if (value !== null) {
     DOC_PROFILE.valueSource = value;
+    saveDocProfile();
     showValueSettings();
   }
 }
@@ -1277,7 +1328,34 @@ function editValueRate() {
 
   if (value !== null) {
     DOC_PROFILE.valueRate = value;
+    saveDocProfile();
     showValueSettings();
+  }
+}
+
+function editDefaultBox() {
+  const value = prompt(
+    "Default Box Size",
+    DOC_PROFILE.defaultBox || "100 cm"
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.defaultBox = value;
+    saveDocProfile();
+    showShippingSettings();
+  }
+}
+
+function editWeightUnit() {
+  const value = prompt(
+    "Weight Unit",
+    DOC_PROFILE.weightUnit || "kg"
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.weightUnit = value;
+    saveDocProfile();
+    showShippingSettings();
   }
 }
 
@@ -1295,30 +1373,6 @@ function getLabel(jp, en) {
   }
 }
 
-function editValueCurrency() {
-  const value = prompt(
-    "Currency",
-    DOC_PROFILE.valueCurrency || "EUR"
-  );
-
-  if (value !== null) {
-    DOC_PROFILE.valueCurrency = value;
-    showValueSettings();
-  }
-}
-
-function editValueSource() {
-  const value = prompt(
-    "Value Source",
-    DOC_PROFILE.valueSource || "Purchase Price"
-  );
-
-  if (value !== null) {
-    DOC_PROFILE.valueSource = value;
-    showValueSettings();
-  }
-}
-
 function editPackingTitle() {
   const value = prompt(
     "Packing List Title",
@@ -1327,6 +1381,7 @@ function editPackingTitle() {
 
   if (value !== null) {
     DOC_PROFILE.packingTitle = value;
+    saveDocProfile();
     showPackingSettings();
   }
 }
@@ -1339,6 +1394,7 @@ function editPackingRemark() {
 
   if (value !== null) {
     DOC_PROFILE.packingRemark = value;
+    saveDocProfile();
     showPackingSettings();
   }
 }
@@ -1351,6 +1407,7 @@ function editCommercialTitle() {
 
   if (value !== null) {
     DOC_PROFILE.commercialTitle = value;
+    saveDocProfile();
     showCommercialInvoiceSettings();
   }
 }
@@ -1363,6 +1420,20 @@ function editCommercialPurpose() {
 
   if (value !== null) {
     DOC_PROFILE.commercialPurpose = value;
+    saveDocProfile();
+    showCommercialInvoiceSettings();
+  }
+}
+
+function editCommercialDeclaration() {
+  const value = prompt(
+    "Commercial Declaration",
+    DOC_PROFILE.commercialDeclaration || "No commercial value, not for resale."
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.commercialDeclaration = value;
+    saveDocProfile();
     showCommercialInvoiceSettings();
   }
 }
@@ -1378,6 +1449,7 @@ function showEditInvoicePrefix() {
 
   if (value !== null && value !== "") {
     DOC_PROFILE.invoicePrefix = value;
+    saveDocProfile();
     showInvoiceSettings();
   }
 }
@@ -1391,6 +1463,7 @@ function showEditShipper() {
 
   if (value !== null && value !== "") {
     DOC_PROFILE.shipperName = value;
+    saveDocProfile();
     showInvoiceSettings();
   }
 }
@@ -1404,6 +1477,7 @@ function showEditConsignee() {
 
   if (value !== null && value !== "") {
     DOC_PROFILE.consigneeCompany = value;
+    saveDocProfile();
     showInvoiceSettings();
   }
 }
@@ -1417,6 +1491,7 @@ function showEditRemark() {
 
   if (value !== null) {
     DOC_PROFILE.invoiceRemark = value;
+    saveDocProfile();
     showInvoiceSettings();
   }
 }
@@ -1439,39 +1514,14 @@ function editInvoicePrefix() {
 
 }
 
-function showLanguageSettings() {
-  var current = DOC_PROFILE.language || "ja";
-  var html = '';
 
-  html += '<div class="sub-header">';
-  html += '<button class="back-button" onclick="showSettings()">‹</button>';
-  html += '<div>';
-  html += '<div class="sub-title">🌐 表示言語</div>';
-  html += '<div class="sub-count">Language</div>';
-  html += '</div>';
-  html += '</div>';
+function getLanguageName() {
+  var lang = DOC_PROFILE.language || "ja";
 
-  html += '<div class="card" onclick="setLanguage(\'ja\')">';
-  html += '<div class="card-title">🇯🇵 日本語 ' + (current === "ja" ? "✓" : "") + '</div>';
-  html += '<div class="card-sub">Japanese</div>';
-  html += '</div>';
+  if (lang === "en") return "English";
+  if (lang === "jp_en" || lang === "ja_en") return "日本語＋English";
 
-  html += '<div class="card" onclick="setLanguage(\'en\')">';
-  html += '<div class="card-title">🇬🇧 English ' + (current === "en" ? "✓" : "") + '</div>';
-  html += '<div class="card-sub">English only</div>';
-  html += '</div>';
-
-  html += '<div class="card" onclick="setLanguage(\'jp_en\')">';
-  html += '<div class="card-title">🌐 日本語＋English ' + (current === "jp_en" ? "✓" : "") + '</div>';
-  html += '<div class="card-sub">Japanese + English</div>';
-  html += '</div>';
-
-  document.getElementById("content").innerHTML = html;
-}
-
-function setLanguage(lang) {
-  DOC_PROFILE.language = lang;
-  showDashboard();
+  return "日本語";
 }
 
 function showLanguageSettings() {
@@ -1506,7 +1556,10 @@ function showLanguageSettings() {
 
 function setLanguage(lang) {
   DOC_PROFILE.language = lang;
-  showDashboard();
+  try {
+    localStorage.setItem("lacocotte_language", lang);
+  } catch (e) {}
+  showSettings();
 }
 
 </script>
