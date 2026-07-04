@@ -6,6 +6,9 @@ const DOC_PROFILE = {
   invoiceTitle: "INVOICE",
   invoiceSubtitle: "",
   invoicePrefix: "LC-2026FR-INV",
+  commercialTitle: "COMMERCIAL INVOICE",
+  commercialDeclaration: "No commercial value, not for resale.",
+  commercialPurpose: "Antique & brocante items for display and collection.",
   shipperName: "TAKUMI TANIGAWA",
   shipperAddress: "7 Rue de Rome, 93290 Tremblay-en-France<br>France",
   shipperTel: "+33 80 22 69 16 78",
@@ -1097,6 +1100,114 @@ function showInvoiceSettings() {
 
   document.getElementById("content").innerHTML = html;
 }
+
+function showCommercialInvoiceSettings() {
+  var html = '';
+
+  html += '<div class="sub-header">';
+  html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
+  html += '<div>';
+  html += '<div class="sub-title">🌍 Commercial Invoice</div>';
+  html += '<div class="sub-count">Customs Document Settings</div>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Title</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.commercialTitle || "COMMERCIAL INVOICE") + '</div>';
+  html += '<button class="primary-button" onclick="editCommercialTitle()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Purpose</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.commercialPurpose || '') + '</div>';
+  html += '<button class="primary-button" onclick="editCommercialPurpose()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Declaration</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.commercialDeclaration || '') + '</div>';
+  html += '<button class="primary-button" onclick="editCommercialDeclaration()">✏️ Edit</button>';
+  html += '</div>';
+
+  document.getElementById("content").innerHTML = html;
+}
+
+function showPackingSettings() {
+  var html = '';
+
+  html += '<div class="sub-header">';
+  html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
+  html += '<div>';
+  html += '<div class="sub-title">📦 Packing List</div>';
+  html += '<div class="sub-count">Packing List Settings</div>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Title</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.packingTitle || "PACKING LIST") + '</div>';
+  html += '<button class="primary-button" onclick="editPackingTitle()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Remark</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.packingRemark || "") + '</div>';
+  html += '<button class="primary-button" onclick="editPackingRemark()">✏️ Edit</button>';
+  html += '</div>';
+
+  document.getElementById("content").innerHTML = html;
+}
+
+function editPackingTitle() {
+  const value = prompt(
+    "Packing List Title",
+    DOC_PROFILE.packingTitle || "PACKING LIST"
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.packingTitle = value;
+    showPackingSettings();
+  }
+}
+
+function editPackingRemark() {
+  const value = prompt(
+    "Packing Remark",
+    DOC_PROFILE.packingRemark || ""
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.packingRemark = value;
+    showPackingSettings();
+  }
+}
+
+function editCommercialTitle() {
+  const value = prompt(
+    "Commercial Invoice Title",
+    DOC_PROFILE.commercialTitle || "COMMERCIAL INVOICE"
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.commercialTitle = value;
+    showCommercialInvoiceSettings();
+  }
+}
+
+function editCommercialPurpose() {
+  const value = prompt(
+    "Commercial Purpose",
+    DOC_PROFILE.commercialPurpose
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.commercialPurpose = value;
+    showCommercialInvoiceSettings();
+  }
+}
+
+
 
 function showEditInvoicePrefix() {
 
