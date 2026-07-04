@@ -13,6 +13,7 @@ const DOC_PROFILE = {
   consigneeCompany: "STE IMAGEDOT",
   consigneeAddress: "1-85-10 Otorinishimachi, Sakai Shi<br>Osaka 590-8326 JAPAN",
   consigneeTel: "+81 72 247 7663"
+  
 };
 
 function getInvoiceNo(boxName) {
@@ -1027,11 +1028,144 @@ function showDocumentSettings() {
   html += '</div>';
   html += '</div>';
 
-  html += '<div class="card">';
-  html += '<div class="card-title">Document Settings</div>';
-  html += '<div class="card-sub">Invoice / Value / Packing を管理します。</div>';
+  html += '<div class="card" onclick="showInvoiceSettings()">';
+  html += '<div class="card-title">📄 Invoice</div>';
+  html += '<div class="card-sub">送り状の設定</div>';
+  html += '</div>';
+
+  html += '<div class="card" onclick="showCommercialInvoiceSettings()">';
+  html += '<div class="card-title">🌍 Commercial Invoice</div>';
+  html += '<div class="card-sub">通関インボイス設定</div>';
+  html += '</div>';
+
+  html += '<div class="card" onclick="showPackingSettings()">';
+  html += '<div class="card-title">📦 Packing List</div>';
+  html += '<div class="card-sub">Packing List の設定</div>';
+  html += '</div>';
+
+  html += '<div class="card" onclick="showValueSettings()">';
+  html += '<div class="card-title">💰 Value Settings</div>';
+  html += '<div class="card-sub">価格・評価額設定</div>';
   html += '</div>';
 
   document.getElementById("content").innerHTML = html;
 }
+
+function showInvoiceSettings() {
+  var html = '';
+
+  html += '<div class="sub-header">';
+  html += '<button class="back-button" onclick="showDocumentSettings()">‹</button>';
+  html += '<div>';
+  html += '<div class="sub-title">📄 Invoice</div>';
+  html += '<div class="sub-count">Invoice Configuration</div>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Document Prefix</div>';
+  html += '<div class="card-sub">' + DOC_PROFILE.invoicePrefix + '</div>';
+  html += '<button class="button secondary" onclick="showEditInvoicePrefix()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Shipper</div>';
+  html += '<div class="card-sub">';
+  html += DOC_PROFILE.shipperName + '<br>';
+  html += DOC_PROFILE.shipperAddress + '<br>';
+  html += 'TEL : ' + DOC_PROFILE.shipperTel;
+  html += '</div>';
+  html += '<button class="button secondary" onclick="showEditShipper()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Consignee</div>';
+  html += '<div class="card-sub">';
+  html += DOC_PROFILE.consigneeName + '<br>';
+  html += DOC_PROFILE.consigneeCompany + '<br>';
+  html += DOC_PROFILE.consigneeAddress + '<br>';
+  html += 'TEL : ' + DOC_PROFILE.consigneeTel;
+  html += '</div>';
+  html += '<button class="button secondary" onclick="showEditConsignee()">✏️ Edit</button>';
+  html += '</div>';
+
+  html += '<div class="card">';
+  html += '<div class="card-title">Remarks</div>';
+  html += '<div class="card-sub">' + (DOC_PROFILE.invoiceRemark || '') + '</div>';
+  html += '<button class="button secondary" onclick="showEditRemark()">✏️ Edit</button>';
+  html += '</div>';
+
+  document.getElementById("content").innerHTML = html;
+}
+
+function showEditInvoicePrefix() {
+
+  var value = prompt(
+    "Invoice Prefix",
+    DOC_PROFILE.invoicePrefix
+  );
+
+  if (value !== null && value !== "") {
+    DOC_PROFILE.invoicePrefix = value;
+    showInvoiceSettings();
+  }
+}
+
+function showEditShipper() {
+
+  var value = prompt(
+    "Shipper Name",
+    DOC_PROFILE.shipperName
+  );
+
+  if (value !== null && value !== "") {
+    DOC_PROFILE.shipperName = value;
+    showInvoiceSettings();
+  }
+}
+
+function showEditConsignee() {
+
+  var value = prompt(
+    "Consignee Company",
+    DOC_PROFILE.consigneeCompany
+  );
+
+  if (value !== null && value !== "") {
+    DOC_PROFILE.consigneeCompany = value;
+    showInvoiceSettings();
+  }
+}
+
+function showEditRemark() {
+
+  var value = prompt(
+    "Invoice Remark",
+    DOC_PROFILE.invoiceRemark || ""
+  );
+
+  if (value !== null) {
+    DOC_PROFILE.invoiceRemark = value;
+    showInvoiceSettings();
+  }
+}
+
+  
+function editInvoicePrefix() {
+
+  var value = prompt(
+    "Invoice Prefix",
+    DOC_PROFILE.invoicePrefix
+  );
+
+  if (value !== null && value !== "") {
+
+    DOC_PROFILE.invoicePrefix = value;
+
+    showInvoiceSettings();
+
+  }
+
+}
+
 </script>
